@@ -1,0 +1,33 @@
+name: Verify ARGI scheduling regression
+on:
+  push:
+    branches: [codex-ci/argi-schedule-470a783]
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    env:
+      ENABLE_TEST_CI: "true"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 470a783889f22ace99e212c8cdeb583972a94854
+          persist-credentials: false
+      - name: Verify candidate checkout
+        run: |
+          test "$(git rev-parse HEAD)" = "470a783889f22ace99e212c8cdeb583972a94854"
+          test "$(git rev-parse 'HEAD^{tree}')" = "ddbadd7434ae3d2578b7e8ed83e12e167c007f7f"
+          git log -1 --format='tested_head=%H tested_tree=%T'
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+          cache: maven
+      - name: Check Spring formatting
+        run: make format-check
+      - name: Run Checkstyle
+        run: make checkstyle-check
+      - name: Test workflow scheduling lifecycle
+        run: ./mvnw -B -ntp -pl :argi-workflow-graph-core -am -Dtest=ScheduledAgentTaskLifecycleTest,ScheduledAgentTaskAtomicStartStopTest -Dsurefire.failIfNoSpecifiedTests=false test
